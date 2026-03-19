@@ -63,7 +63,7 @@ daggerheart_campaign/
 │   ├── 09-encounter-building.md
 │   ├── 10-campaign-structure.md
 │   ├── 11-rest-downtime.md
-│   ├── 12-equipment-weapons.md
+│   ├── 12-equipment-weapons.md # NOTE: weapon tables need sourcing from SRD/core book
 │   ├── 13-equipment-armor.md
 │   ├── 14-gm-moves.md
 │   └── 15-gm-procedures.md
@@ -73,6 +73,7 @@ daggerheart_campaign/
 │       ├── party/              # Character sheets (JSON per PC)
 │       ├── npcs/               # NPC files (Markdown)
 │       ├── adversaries/        # Adversary stat blocks (JSON)
+│       ├── encounters/         # Saved encounters (JSON)
 │       ├── world/              # Locations, factions (Markdown)
 │       ├── journal/            # Session notes (Markdown per session)
 │       └── sessions/           # Chat session saves (JSON)
@@ -134,7 +135,7 @@ below. These are your complete rules and GM instructions.
 ### Dice Roller (`engine/dice.py`)
 
 - `roll(notation: str) -> RollResult` -- parses standard notation: `2d12`, `1d8+3`, `3d6-1`
-- `roll_duality() -> DualityResult` -- rolls 2d12, returns: hope_die, fear_die, total, outcome_type (success_hope, success_fear, failure_hope, failure_fear, critical)
+- `roll_duality(modifier: int, difficulty: int) -> DualityResult` -- rolls 2d12, adds modifier, compares to difficulty. Returns: hope_die, fear_die, raw_total, modified_total, difficulty, outcome_type, hope_gained (bool), fear_gained (bool), stress_cleared (bool, on critical). Outcome types: `success_hope`, `success_fear`, `failure_hope`, `failure_fear`, `critical`. Critical success (matching dice) is automatic success regardless of total, grants 1 Hope AND clears 1 Stress.
 - `roll_with_advantage(notation) -> RollResult` -- adds d6 to total
 - `roll_with_disadvantage(notation) -> RollResult` -- subtracts d6 from total
 - `roll_damage(proficiency, die, modifier) -> int` -- rolls [proficiency]d[die]+modifier
@@ -144,6 +145,23 @@ Three runtime modes:
 - **AI Narrates**: LLM describes rolls as part of narrative (no actual dice, like BXish)
 - **Manual Input**: Player types results (e.g., "I rolled 8 and 5"), AI interprets
 
+### Player-Facing Rolls and Adversary Turns
+
+Daggerheart is a **player-facing** system: only players roll dice. The GM does not roll to attack. When adversaries act (GM has spotlight):
+- **App Roll mode**: The app does NOT roll for adversaries. The AI GM narrates what the adversary attempts, then either (a) asks the player to make a defensive roll (Agility/reaction) with a stated difficulty, or (b) applies damage directly as a GM move (spending Fear if appropriate). The dice roller is only invoked for player-initiated rolls.
+- **AI Narrates mode**: The AI handles everything narratively as usual.
+- **Manual Input mode**: The AI GM describes the adversary's action and tells the player what to roll defensively, if applicable.
+
+### Minimum Context Window Requirements
+
+| Tier | System Prompt | Min Context Window |
+|------|--------------|-------------------|
+| core | ~15K tokens | 32K+ |
+| gm | ~25K tokens | 64K+ |
+| full | ~35K tokens | 128K+ |
+
+The app warns on startup if the system prompt exceeds 50% of the available context window.
+
 ### Session Manager (`engine/session.py`)
 
 - `save_session(messages, path)` -- JSON dump of full message history
@@ -151,6 +169,51 @@ Three runtime modes:
 - Auto-save on exit
 - Campaign-aware: sessions saved under `campaigns/{name}/sessions/`
 - Filename format: `session-YYYYMMDD-HHMMSS.json`
+
+### Campaign Context Injection
+
+Campaign state (party composition, current location, active NPCs, countdowns, Fear counter) must be available to the LLM during play and generation tasks. Strategy:
+
+1. **System prompt**: Contains only Daggerheart rules (skill files). Does NOT include campaign state. This keeps the system prompt stable and cacheable across sessions.
+2. **Campaign context message**: On session start or resume, a system-role message is injected at position 1 (after the system prompt) containing a compact summary of current campaign state:
+   - Party roster (names, classes, levels, current HP/Stress/Hope)
+   - GM Fear counter
+   - Active countdowns and their current values
+   - Current location and notable NPCs present
+   - Recent journal summary (last session's key events)
+3. **Live updates**: When party state changes during play (HP marked, Hope spent, etc.), the context message at position 1 is updated in-place rather than appended as new messages. This avoids consuming conversation budget with redundant state.
+4. **Generator context**: When using campaign tools (NPC gen, encounter builder, etc.) outside the chat, the same campaign context is assembled and passed as a system message to the generation call.
+5. **Token budget**: Campaign context is estimated at ~1-2K tokens. Combined with the system prompt, this stays well within the 25% system allocation (even at full tier: ~35K skills + ~2K context = ~37K, fitting in 128K+ context windows).
+
+### Damage Threshold Computation
+
+Armor thresholds in the character sheet JSON store **base armor values** (`base_major`, `base_severe`). Effective thresholds are computed at runtime:
+
+```
+effective_major = base_major + character_level
+effective_severe = base_severe + character_level
+```
+
+At level 1, a Gambeson (base 5/11) yields effective thresholds of 6/12. The `character.py` module provides a `get_effective_thresholds(character) -> (int, int)` helper. The UI always displays effective (computed) values, never base values.
+
+### Hope and Fear Tracking
+
+- **Hope** is per-PC, stored in each character's JSON (`hope.current`, `hope.max`, `hope.scars`). The party tracker reads from character files to display. The authoritative source is always the character JSON.
+- **Fear** is a single GM pool, stored in `campaign.json` under `fear.current` (max 12). Displayed in the status bar and party tab.
+- Both are updated during play: the AI GM narrates Hope/Fear changes, and in App Roll mode the dice roller signals when Hope/Fear should change. The UI provides manual +/- buttons for corrections.
+
+### Rest Tracking
+
+Rest state is tracked in `campaign.json`:
+- `consecutive_short_rests`: counter (0-3), resets on long rest
+- When a short rest is taken: increment counter, apply 1d4 Fear to GM pool
+- When counter reaches 3: next rest must be long
+- Long rest: reset counter, apply `1d4 + party_size` Fear to GM pool, advance one campaign countdown
+- The `party.py` module enforces the three-short-rest rule
+
+### `--local` Flag
+
+`--local` is a convenience alias equivalent to `--provider local`. Both set `base_url` to `http://localhost:8000/v1` with no API key required. If `--model` is not specified, the app queries the local server's `/v1/models` endpoint to auto-discover the available model (same as BXish).
 
 ---
 
@@ -206,8 +269,8 @@ Character sheet format (JSON):
     "name": "Gambeson",
     "base_score": 3,
     "slots_marked": 0,
-    "major": 5,
-    "severe": 11,
+    "base_major": 5,
+    "base_severe": 11,
     "feature": "Flexible: +1 Evasion"
   },
   "weapons": [
@@ -247,10 +310,11 @@ Character sheet format (JSON):
 
 - Battle Points formula: `(3 x party_size) + 2` base budget
 - Adjustments: +/- for difficulty, adversary type constraints, tier mixing
+- **Tier terminology**: "Tier" in the encounter builder always refers to **adversary tier**, which is one tier below the PC tier (Tier 1 PCs face Tier 0 adversaries, Tier 2 PCs face Tier 1, etc.). The UI auto-selects the appropriate adversary tier based on party level.
 - AI-powered: given party composition and narrative context, generates thematically appropriate encounters
 - Validates BP math against adversary type costs
 - Output: adversary list with stat blocks, tactical notes, environment suggestions
-- Save/reuse encounters as JSON
+- Save/reuse encounters as JSON in `campaigns/{name}/encounters/`
 
 ### Adversary Manager (`campaign/adversary.py`)
 
@@ -406,7 +470,7 @@ In-session commands:
 | `--temperature` | 0.7 | LLM temperature |
 | `--dice-mode` | `app` | Default dice mode: app, ai, manual |
 | `--list-models` | False | Print model aliases and exit |
-| `--local` | False | Shortcut for local vLLM/Ollama |
+| `--local` | False | Alias for `--provider local` (sets base URL to localhost:8000, auto-discovers model) |
 
 ### Environment Variables
 
@@ -434,7 +498,7 @@ In-session commands:
 | Adversary stat blocks | JSON | `campaigns/{name}/adversaries/` | Structured mechanical data |
 | Campaign metadata | JSON | `campaigns/{name}/campaign.json` | State tracking (Fear, countdowns) |
 | Chat sessions | JSON | `campaigns/{name}/sessions/` | Message history for LLM |
-| Saved encounters | JSON | `campaigns/{name}/adversaries/` | Structured with BP costs |
+| Saved encounters | JSON | `campaigns/{name}/encounters/` | Structured with BP costs |
 | NPCs | Markdown | `campaigns/{name}/npcs/` | Narrative-heavy, human-readable |
 | Locations | Markdown | `campaigns/{name}/world/` | Narrative-heavy |
 | Factions | Markdown | `campaigns/{name}/world/` | Narrative-heavy |
