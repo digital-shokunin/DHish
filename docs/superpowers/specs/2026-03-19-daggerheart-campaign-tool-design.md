@@ -63,7 +63,7 @@ daggerheart_campaign/
 │   ├── 09-encounter-building.md
 │   ├── 10-campaign-structure.md
 │   ├── 11-rest-downtime.md
-│   ├── 12-equipment-weapons.md # NOTE: weapon tables need sourcing from SRD/core book
+│   ├── 12-equipment-weapons.md
 │   ├── 13-equipment-armor.md
 │   ├── 14-gm-moves.md
 │   └── 15-gm-procedures.md
