@@ -2407,6 +2407,8 @@ def main():
         logger.info("Resumed session from %s", args.session)
 
     # Campaign context injection
+    campaign = None
+    party = None
     if args.campaign:
         from campaign.state import load_campaign, create_campaign
         from campaign.party import load_party, build_campaign_context
@@ -2528,35 +2530,43 @@ This chunk writes the actual Daggerheart rules as markdown skill files. These ar
 - Create: `skills/06-damage-armor.md`
 - Create: `skills/07-conditions-death.md`
 
-- [ ] **Step 1: Write 02-character-creation.md**
+- [ ] **Step 1: Rewrite SKILL.md**
+
+Expand from the test stub to the full GM procedures document. Source the behavioral instructions from BXish's SKILL.md pattern, adapted for Daggerheart. Include: player agency rules (10 numbered rules), spotlight management procedures, Hope/Fear tracking procedures, NPC and social play guidelines, core GM principles. This file is the behavioral backbone -- it tells the AI *how* to GM, not *what* the rules are.
+
+- [ ] **Step 2: Rewrite 01-core-mechanics.md**
+
+Expand from the test stub to full core mechanics. Source from mechanics reference sections 1 (Core Mechanics) and 2 (Hope and Fear). Include: duality dice system with all 5 outcomes, advantage/disadvantage rules, difficulty guidelines by tier, complete Hope economy (gaining, spending, max, carry over), complete Fear economy (gaining, spending, max), all spending options for both currencies.
+
+- [ ] **Step 3: Write 02-character-creation.md**
 
 Source from `daggerheart_mechanics_reference.md` sections 3 (Character Creation) and 10 (Character Sheet Structure). Include: step-by-step process, six traits with spread, all 18 ancestries with features, all 9 communities with features, experiences system, starting stats.
 
-- [ ] **Step 2: Write 03-classes.md**
+- [ ] **Step 4: Write 03-classes.md**
 
 Source from mechanics reference section 3 (Classes table) and SRD data added by the research agent. Include: all 9 classes with domains, subclasses, starting HP, starting Evasion, class features, Hope features, spellcast traits, suggested trait arrays.
 
-- [ ] **Step 3: Write 04-domains.md**
+- [ ] **Step 5: Write 04-domains.md**
 
 Source from mechanics reference section 4 (Domains). Include: all 9 domains with descriptions, card types (ability/spell/grimoire), domain card mechanics (loadout of 5, vault, recall cost, swapping), spellcasting mechanics, level 1 card descriptions for all domains.
 
-- [ ] **Step 4: Write 05-combat.md**
+- [ ] **Step 6: Write 05-combat.md**
 
 Source from mechanics reference section 5 (Combat). Include: spotlight system, action economy, attack rolls, damage rolls, critical damage, multi-target rules, group action rolls, tag team rolls (3 Hope cost), range/distance zones.
 
-- [ ] **Step 5: Write 06-damage-armor.md**
+- [ ] **Step 7: Write 06-damage-armor.md**
 
 Source from mechanics reference section 5 (Damage Thresholds, Armor Slots, Resistance/Immunity). Include: threshold mechanic (how damage maps to HP marked: 1/2/3/4), armor slot usage and restoration, stress system and Vulnerable condition, resistance/immunity rules. Do NOT include full equipment tables here -- those belong in 12-equipment-weapons.md and 13-equipment-armor.md (GM tier).
 
-- [ ] **Step 6: Write 07-conditions-death.md**
+- [ ] **Step 8: Write 07-conditions-death.md**
 
 Source from mechanics reference section 5 (Conditions, Death Mechanics). Include: Hidden/Restrained/Vulnerable conditions, three death move choices (Blaze of Glory, Avoid Death, Risk It All), scar mechanics.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add skills/02-character-creation.md skills/03-classes.md skills/04-domains.md skills/05-combat.md skills/06-damage-armor.md skills/07-conditions-death.md
-git commit -m "feat: add core skill files (character creation, classes, domains, combat, damage, conditions)"
+git add skills/SKILL.md skills/01-core-mechanics.md skills/02-character-creation.md skills/03-classes.md skills/04-domains.md skills/05-combat.md skills/06-damage-armor.md skills/07-conditions-death.md
+git commit -m "feat: add core skill files (GM procedures, mechanics, characters, classes, domains, combat, damage, conditions)"
 ```
 
 ---
