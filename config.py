@@ -10,7 +10,7 @@ CONTEXT_RESERVE_RATIO = 0.75
 PROVIDER_PRESETS = {
     "abacus": {
         "base_url": "https://api.abacus.ai/v1",
-        "default_model": None,
+        "default_model": "route-llm",
         "env_var": "ABACUS_API_KEY",
     },
     "anthropic": {
