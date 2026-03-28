@@ -4,6 +4,7 @@
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from config import VERSION
 from engine.agent import DaggerheartAgent, estimate_message_tokens
@@ -39,7 +40,7 @@ def _print_status(agent, messages, campaign=None, party=None):
     print("\n[Status] " + " | ".join(parts))
 
 
-def _handle_roll_command(args: str) -> str | None:
+def _handle_roll_command(args: str) -> Optional[str]:
     """Handle the 'roll' command, returning a result string."""
     if not args:
         return "Usage: roll <notation> (e.g., roll 2d12, roll 1d8+3)"
@@ -53,8 +54,11 @@ def _handle_roll_command(args: str) -> str | None:
 def _handle_duality_command(args: str) -> str:
     """Handle the 'duality' command. Optional args: modifier difficulty."""
     parts = args.split() if args else []
-    modifier = int(parts[0]) if len(parts) >= 1 else 0
-    difficulty = int(parts[1]) if len(parts) >= 2 else 11
+    try:
+        modifier = int(parts[0]) if len(parts) >= 1 else 0
+        difficulty = int(parts[1]) if len(parts) >= 2 else 11
+    except ValueError:
+        return "Usage: duality [modifier] [difficulty] (e.g., duality +2 14)"
     result = roll_duality(modifier=modifier, difficulty=difficulty)
     outcome_labels = {
         "success_hope": "Success with Hope",
@@ -81,11 +85,11 @@ def _handle_duality_command(args: str) -> str:
 def run_terminal(
     agent: DaggerheartAgent,
     messages: list[dict],
-    session_path: Path | None = None,
+    session_path: Optional[Path] = None,
     campaign_name: str = "",
     tier: str = "full",
     campaign=None,
-    party: list | None = None,
+    party: Optional[list] = None,
 ):
     """Run the interactive terminal chat loop.
 

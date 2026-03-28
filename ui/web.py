@@ -4,6 +4,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from config import VERSION
 from engine.agent import DaggerheartAgent, estimate_message_tokens
@@ -37,7 +38,7 @@ def launch_web_ui(
     agent: DaggerheartAgent,
     messages: list[dict],
     port: int = 7860,
-    campaign_dir: Path | None = None,
+    campaign_dir: Optional[Path] = None,
 ):
     """Launch the Gradio web interface.
 
@@ -88,7 +89,11 @@ def launch_web_ui(
             return "Enter dice notation (e.g., 2d12, 1d8+3)"
         try:
             result = roll(notation.strip())
-            return f"Rolled {result.notation}: {result.dice} = {result.total}"
+            roll_text = f"Rolled {result.notation}: {result.dice} = {result.total}"
+            # Inject into conversation so the AI knows the result
+            if dice_mode[0] == "app_roll":
+                conversation.append({"role": "system", "content": f"[Dice Roll] {roll_text}"})
+            return roll_text
         except ValueError as e:
             return str(e)
 
@@ -102,11 +107,22 @@ def launch_web_ui(
             "critical": "CRITICAL SUCCESS!",
         }
         label = outcome_labels.get(result.outcome_type, result.outcome_type)
-        return (
+        roll_text = (
             f"Hope [{result.hope_die}] Fear [{result.fear_die}] | "
             f"Total: {result.modified_total} vs {result.difficulty} | "
             f"{label}"
         )
+        # Inject into conversation so the AI knows the result
+        if dice_mode[0] == "app_roll":
+            details = [f"[Duality Roll] {roll_text}"]
+            if result.hope_gained:
+                details.append("Player gains 1 Hope.")
+            if result.fear_gained:
+                details.append("GM gains 1 Fear.")
+            if result.stress_cleared:
+                details.append("Player clears 1 Stress.")
+            conversation.append({"role": "system", "content": " ".join(details)})
+        return roll_text
 
     def do_load_context(files, chat_history):
         if not files:
@@ -162,7 +178,7 @@ def launch_web_ui(
         neutral_hue="stone",
     )
 
-    with gr.Blocks(title="Daggerheart Campaign Tool") as app:
+    with gr.Blocks(css=CSS, theme=theme, title="Daggerheart Campaign Tool") as app:
         gr.Markdown(f"# Daggerheart Campaign Tool v{VERSION}")
 
         with gr.Tabs():
@@ -231,4 +247,4 @@ def launch_web_ui(
         if not any(m.get("role") == "assistant" for m in conversation):
             conversation.append({"role": "assistant", "content": GREETING})
 
-    app.launch(server_name="0.0.0.0", server_port=port, share=False, inbrowser=True, css=CSS)
+    app.launch(server_name="0.0.0.0", server_port=port, share=False, inbrowser=True)

@@ -1,11 +1,23 @@
 """Campaign state management for Daggerheart Campaign Tool."""
 import json
 import logging
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 MAX_FEAR = 12
 CAMPAIGN_SUBDIRS = ["party", "npcs", "adversaries", "encounters", "world", "journal", "sessions"]
+
+
+def _sanitize_campaign_name(name: str) -> str:
+    """Sanitize campaign name to prevent path traversal."""
+    # Strip path separators and parent references
+    safe = re.sub(r"[/\\]", "", name)
+    safe = safe.replace("..", "")
+    safe = safe.strip(". ")
+    if not safe:
+        raise ValueError(f"Invalid campaign name: {name!r}")
+    return safe
 
 class CampaignState:
     def __init__(self, name: str, campaign_dir: Path):
@@ -48,6 +60,7 @@ class CampaignState:
         return state
 
 def create_campaign(name: str, campaigns_base: Path) -> CampaignState:
+    name = _sanitize_campaign_name(name)
     campaign_dir = campaigns_base / name
     for subdir in CAMPAIGN_SUBDIRS:
         (campaign_dir / subdir).mkdir(parents=True, exist_ok=True)
@@ -56,6 +69,7 @@ def create_campaign(name: str, campaigns_base: Path) -> CampaignState:
     return state
 
 def load_campaign(name: str, campaigns_base: Path) -> CampaignState:
+    name = _sanitize_campaign_name(name)
     campaign_dir = campaigns_base / name
     path = campaign_dir / "campaign.json"
     with open(path, "r", encoding="utf-8") as f:

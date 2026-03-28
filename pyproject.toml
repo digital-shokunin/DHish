@@ -1,0 +1,17 @@
+[project]
+name = "dhish"
+version = "1.0.0"
+description = "BXish-inspired AI Game Master and campaign tool for Daggerheart RPG"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.0,<3.0",
+    "gradio>=4.0,<7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0,<10.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

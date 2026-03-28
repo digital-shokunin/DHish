@@ -78,8 +78,12 @@ def list_characters(party_dir: Path) -> list[str]:
         return []
     names = []
     for path in sorted(party_dir.glob("*.json")):
-        with open(path) as f:
-            names.append(json.load(f)["name"])
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            names.append(data["name"])
+        except (json.JSONDecodeError, KeyError):
+            logging.getLogger(__name__).warning("Skipping malformed character file: %s", path)
     return names
 
 def get_effective_thresholds(character: Character) -> tuple[int, int]:
