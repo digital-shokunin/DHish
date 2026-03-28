@@ -162,7 +162,7 @@ def launch_web_ui(
         neutral_hue="stone",
     )
 
-    with gr.Blocks(css=CSS, theme=theme, title="Daggerheart Campaign Tool") as app:
+    with gr.Blocks(title="Daggerheart Campaign Tool") as app:
         gr.Markdown(f"# Daggerheart Campaign Tool v{VERSION}")
 
         with gr.Tabs():
@@ -171,7 +171,6 @@ def launch_web_ui(
                 chatbot = gr.Chatbot(
                     value=[{"role": "assistant", "content": GREETING}],
                     height=500,
-                    type="messages",
                 )
                 with gr.Row():
                     msg_input = gr.Textbox(
@@ -232,4 +231,4 @@ def launch_web_ui(
         if not any(m.get("role") == "assistant" for m in conversation):
             conversation.append({"role": "assistant", "content": GREETING})
 
-    app.launch(server_name="0.0.0.0", server_port=port, share=False, inbrowser=True)
+    app.launch(server_name="0.0.0.0", server_port=port, share=False, inbrowser=True, css=CSS)
